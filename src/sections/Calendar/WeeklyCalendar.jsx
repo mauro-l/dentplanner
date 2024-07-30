@@ -1,10 +1,11 @@
 import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import esLocale from "@fullcalendar/core/locales/es";
 import EditShift from "../ShiftManager/Modal/EditShift";
+import EventsContent from "./EventsContent";
 
 export default function WeeklyCalendar({
   eventsDB,
@@ -15,6 +16,7 @@ export default function WeeklyCalendar({
   const [calendarApis, setCalendarApis] = useState(null);
 
   //let nowStr = new Date().toISOString().slice(0, 19);
+
   console.log("Calendario", eventsDB);
 
   //Dirije hacie la vista diaria segun la fecha seleccionada en el MiniCalendar
@@ -26,11 +28,15 @@ export default function WeeklyCalendar({
   }, [calendarApis, dateSelected]);
 
   //Toma la referencia de la api del calendario cuando este listo
-  const handleDatesSet = (arg) => {
+  /* const handleDatesSet = (arg) => {
     setTimeout(() => {
       setCalendarApis(arg.view.calendar);
     }, 0);
-  };
+  }; */
+
+  const handleDatesSet = useCallback((arg) => {
+    setCalendarApis(arg.view.calendar);
+  }, []);
 
   //funcion para añadir eventos
   function handleDateSelect(selectInfo) {
@@ -52,7 +58,7 @@ export default function WeeklyCalendar({
 
   function handleEventClick(clickInfo) {
     setModalModifyIsVisible(true);
-    console.log("evento clickeado", clickInfo.event);
+    //console.log("evento clickeado", clickInfo.event);
     /* if (
       confirm(
         `Are you sure you want to delete the event '${clickInfo.event.title}'`
@@ -62,6 +68,34 @@ export default function WeeklyCalendar({
       clickInfo.event.remove();
     } */
   }
+
+  /* const renderEventContent = useCallback((eventInfo) => {
+    const backgroundColor = eventInfo.event.extendedProps.statusColor;
+    //console.log("evento clickeado", eventInfo.event.extendedProps.statusColor);
+    const isWeekView = eventInfo.view.type === "timeGridWeek";
+    console.log(eventInfo);
+
+    return (
+      <div
+        className={`flex items-center justify-between mx-auto w-full ${
+          isWeekView
+            ? "text-sm text-textBlue"
+            : "text-sm font-medium text-textBlue"
+        }`}
+      >
+        {!isWeekView && (
+          <div className="inline-flex items-center">
+            <div
+              style={{ backgroundColor }}
+              className="w-2.5 h-2.5 mr-1 rounded-full items-center"
+            />
+            <p className="me-2">| {eventInfo.timeText}</p>
+          </div>
+        )}
+        <b>{eventInfo.event.title}</b>
+      </div>
+    );
+  }, []); */
 
   return (
     <>
@@ -84,8 +118,11 @@ export default function WeeklyCalendar({
             /* events */
             events={eventsDB}
             select={handleDateSelect}
-            eventContent={renderEventContent} // custom render function
+            eventContent={(eventInfo) => (
+              <EventsContent eventInfo={eventInfo} />
+            )} // custom render function
             eventClick={handleEventClick}
+            eventOverlap={false}
             //eventsSet={handleEvents} // called after events are initialized/added/changed/removed
             /* you can update a remote database when these fire:
             eventAdd={function(){}}
@@ -125,16 +162,17 @@ export default function WeeklyCalendar({
   );
 }
 
-function renderEventContent(eventInfo) {
-  /* console.log(eventInfo.view.type);
-  if (eventInfo.view.type === "timeGridDay") {
-    return (
-      <div className="inline-flex items-center text-sm font-medium text-textBlue">
-        <i>{eventInfo.event.title}</i>
-      </div>
-    );
-  } */
-  /* let diary = eventInfo.view.type === "timeGridDay"; */
+/* function renderEventContent(eventInfo) {
+  const backgroundColor = eventInfo.event.backgroundColor;
+  console.log(backgroundColor);
+  // if (eventInfo.view.type === "timeGridDay") {
+  //   return (
+  //     <div className="inline-flex items-center text-sm font-medium text-textBlue">
+  //       <i>{eventInfo.event.title}</i>
+  //     </div>
+  //   );
+  // }
+  // let diary = eventInfo.view.type === "timeGridDay";
   const week = " text-sm text-textBlue";
   const diary = "text-sm  font-medium text-textBlue";
   return (
@@ -142,15 +180,13 @@ function renderEventContent(eventInfo) {
       className={`flex items-center ${
         eventInfo.view.type === "timeGridDay" ? week : diary
       }`}
-      /* className={`flex items-center text-sm text-textBlue ${
-        eventInfo.view.type === "timeGridDay" ? "" : "font-normal "
-      }`} */
+      
     >
       {eventInfo.view.type === "timeGridDay" && (
         <>
           <div
-            /* style={{ backgroundColor: statusColor }} */
-            className={`w-2.5 h-2.5 rounded-full mr-2 bg-green-500`}
+            style={{ backgroundColor: backgroundColor }}
+            className={`w-2.5 h-2.5 rounded-full mr-2`}
           />
           <b className="me-2">{eventInfo.timeText}</b>
         </>
@@ -159,7 +195,7 @@ function renderEventContent(eventInfo) {
       <i>{eventInfo.event.title}</i>
     </div>
   );
-}
+} */
 
 WeeklyCalendar.propTypes = {
   /* setStateCalendarApi: PropTypes.func.isRequired, */

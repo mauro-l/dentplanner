@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import Button from "../../components/Button";
+//import Button from "../../components/Button";
 
 function EventsContent({ eventInfo }) {
   const backgroundColor = eventInfo.event.extendedProps.statusColor;
