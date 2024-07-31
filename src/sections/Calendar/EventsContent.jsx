@@ -5,7 +5,6 @@ function EventsContent({ eventInfo }) {
   const backgroundColor = eventInfo.event.extendedProps.statusColor;
   //console.log("evento clickeado", eventInfo.event.extendedProps.statusColor);
   const isWeekView = eventInfo.view.type === "timeGridWeek";
-  console.log(backgroundColor);
   return (
     <div
       className={`flex items-center justify-between px-2 mx-auto w-full ${

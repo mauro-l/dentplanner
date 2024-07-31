@@ -41,10 +41,7 @@ function App() {
           path="/registrar"
           element={token ? <Register /> : <Navigate to="/" replace />}
         />
-        <Route
-          path="/perfil"
-          element={token ? <Profile /> : <Navigate to="/" replace />}
-        />
+        <Route path="/perfil" element={<Profile />} />
         <Route path="/test" element={<ShiftManager />} />
         <Route path="*" element={<p>404 page not found</p>} />
       </Routes>

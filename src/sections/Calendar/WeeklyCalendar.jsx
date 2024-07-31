@@ -14,10 +14,33 @@ export default function WeeklyCalendar({
   modalModifyIsVisible,
 }) {
   const [calendarApis, setCalendarApis] = useState(null);
+  const [contentHeight, setContentHeight] = useState(600);
 
-  //let nowStr = new Date().toISOString().slice(0, 19);
+  const adjustContentHeight = () => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    console.log("Tamaño pantalla", width, "ALTURA; ", height);
+    if (height < 600) {
+      setContentHeight(420); // Altura para pantallas pequeñas
+    } else if (height < 768) {
+      setContentHeight(550); // Altura para pantallas medianas
+    } else {
+      setContentHeight(600); // Altura para pantallas grandes
+    }
+  };
 
-  console.log("Calendario", eventsDB);
+  useEffect(() => {
+    // Ajusta la altura inicialmente
+    adjustContentHeight();
+
+    // Agrega un listener para el evento resize
+    window.addEventListener("resize", adjustContentHeight);
+
+    // Limpia el listener al desmontar el componente
+    return () => {
+      window.removeEventListener("resize", adjustContentHeight);
+    };
+  }, []);
 
   //Dirije hacie la vista diaria segun la fecha seleccionada en el MiniCalendar
   useEffect(() => {
@@ -69,34 +92,6 @@ export default function WeeklyCalendar({
     } */
   }
 
-  /* const renderEventContent = useCallback((eventInfo) => {
-    const backgroundColor = eventInfo.event.extendedProps.statusColor;
-    //console.log("evento clickeado", eventInfo.event.extendedProps.statusColor);
-    const isWeekView = eventInfo.view.type === "timeGridWeek";
-    console.log(eventInfo);
-
-    return (
-      <div
-        className={`flex items-center justify-between mx-auto w-full ${
-          isWeekView
-            ? "text-sm text-textBlue"
-            : "text-sm font-medium text-textBlue"
-        }`}
-      >
-        {!isWeekView && (
-          <div className="inline-flex items-center">
-            <div
-              style={{ backgroundColor }}
-              className="w-2.5 h-2.5 mr-1 rounded-full items-center"
-            />
-            <p className="me-2">| {eventInfo.timeText}</p>
-          </div>
-        )}
-        <b>{eventInfo.event.title}</b>
-      </div>
-    );
-  }, []); */
-
   return (
     <>
       <div className="demo-app">
@@ -123,6 +118,7 @@ export default function WeeklyCalendar({
             )} // custom render function
             eventClick={handleEventClick}
             eventOverlap={false}
+            updateSize={true}
             //eventsSet={handleEvents} // called after events are initialized/added/changed/removed
             /* you can update a remote database when these fire:
             eventAdd={function(){}}
@@ -143,7 +139,8 @@ export default function WeeklyCalendar({
             slotMinTime="08:00:00"
             slotMaxTime="21:00:00"
             allDaySlot={false}
-            contentHeight={600}
+            contentHeight={contentHeight}
+            /* height={500} */
             slotLabelFormat={{
               hour: "numeric",
               minute: "2-digit",
@@ -161,41 +158,6 @@ export default function WeeklyCalendar({
     </>
   );
 }
-
-/* function renderEventContent(eventInfo) {
-  const backgroundColor = eventInfo.event.backgroundColor;
-  console.log(backgroundColor);
-  // if (eventInfo.view.type === "timeGridDay") {
-  //   return (
-  //     <div className="inline-flex items-center text-sm font-medium text-textBlue">
-  //       <i>{eventInfo.event.title}</i>
-  //     </div>
-  //   );
-  // }
-  // let diary = eventInfo.view.type === "timeGridDay";
-  const week = " text-sm text-textBlue";
-  const diary = "text-sm  font-medium text-textBlue";
-  return (
-    <div
-      className={`flex items-center ${
-        eventInfo.view.type === "timeGridDay" ? week : diary
-      }`}
-      
-    >
-      {eventInfo.view.type === "timeGridDay" && (
-        <>
-          <div
-            style={{ backgroundColor: backgroundColor }}
-            className={`w-2.5 h-2.5 rounded-full mr-2`}
-          />
-          <b className="me-2">{eventInfo.timeText}</b>
-        </>
-      )}
-
-      <i>{eventInfo.event.title}</i>
-    </div>
-  );
-} */
 
 WeeklyCalendar.propTypes = {
   /* setStateCalendarApi: PropTypes.func.isRequired, */
