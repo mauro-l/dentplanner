@@ -1,21 +1,29 @@
-import PropTypes from "prop-types";
+/* import PropTypes from "prop-types";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 import { Calendar, Button, Typography } from "antd";
 import dayLocaleData from "dayjs/plugin/localeData";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 
 dayjs.extend(dayLocaleData);
 dayjs.locale("es");
 
-const MonthCalendar = ({ handleDateSelect }) => {
+const MonthCalendar = ({ handleDateSelect, initialDate }) => {
   const [currentDate, setCurrentDate] = useState(dayjs());
-  /* const { token } = theme.useToken(); */
+
+  useEffect(() => {
+    if (initialDate) {
+      const parsedDate = dayjs(initialDate);
+      setCurrentDate(parsedDate.isValid() ? parsedDate : dayjs());
+    }
+  }, [initialDate]);
 
   const handleDateChange = (value) => {
-    setCurrentDate(value);
-    handleDateSelect(value.format("YYYY-MM-DD"));
+    if (value.day() !== 0) {
+      setCurrentDate(value);
+      handleDateSelect(value.format("YYYY-MM-DD"));
+    }
   };
 
   const handleMonthChange = (amount) => {
@@ -32,8 +40,31 @@ const MonthCalendar = ({ handleDateSelect }) => {
     },
   };
 
+  const disabledDate = (current) => {
+    return current && current.day() === 0;
+  };
+
+  const fullCellRender = (date) => {
+    const isDisabled = date.day() === 0;
+    return (
+      <div
+        className={`ant-picker-cell-inner ${
+          isDisabled ? "cursor-not-allowed" : ""
+        }`}
+        style={{
+          height: "100%",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        {date.date()}
+      </div>
+    );
+  };
+
   return (
-    <div className="w-full py-2">
+    <div className="w-full pt-2">
       <Calendar
         fullscreen={false}
         value={currentDate}
@@ -64,6 +95,8 @@ const MonthCalendar = ({ handleDateSelect }) => {
         }}
         onChange={handleDateChange}
         locale={customLocale}
+        disabledDate={disabledDate}
+        fullCellRender={fullCellRender}
       />
     </div>
   );
@@ -73,4 +106,6 @@ export default MonthCalendar;
 
 MonthCalendar.propTypes = {
   handleDateSelect: PropTypes.func.isRequired,
+  initialDate: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
 };
+ */

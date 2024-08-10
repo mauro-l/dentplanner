@@ -11,7 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
-EventContent.jsx
+EventContent2.jsx
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +23,5 @@ EventContent.jsx
 *.njsproj
 *.sln
 *.sw?
+
+.env

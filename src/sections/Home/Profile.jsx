@@ -2,10 +2,10 @@ import { jwtDecode } from "jwt-decode";
 
 export default function Profile() {
   const token = localStorage.getItem("token");
-  let profileText;
+  let profileRole;
   if (token) {
     const decoded = jwtDecode(token);
-    profileText =
+    profileRole =
       decoded.role === "admin"
         ? "Administrador"
         : decoded.role === "dentist"
@@ -14,8 +14,8 @@ export default function Profile() {
   }
 
   return (
-    <div className="sm:flex hidden bg-[#eef3f7] w-full justify-end pr-[120px] py-3">
-      <p className="text-base text-[#262626]">Perfil: {profileText}</p>
+    <div className="sm:flex hidden bg-[#eef3f7] w-full justify-end lg:px-[120px] px-4 pr-8 py-3">
+      <p className="text-base text-[#262626]">Perfil: {profileRole}</p>
     </div>
   );
 }

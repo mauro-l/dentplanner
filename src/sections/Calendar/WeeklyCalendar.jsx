@@ -1,158 +1,234 @@
 import PropTypes from "prop-types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import esLocale from "@fullcalendar/core/locales/es";
-import EditShift from "../ShiftManager/Modal/EditShift";
 import EventsContent from "./EventsContent";
-
+import { ScheduleShift, EditShift } from "../ShiftManager/Modal";
+import { isBefore, isToday, isFuture } from "date-fns";
+import { Button } from "antd";
+import { IoMenu } from "react-icons/io5";
+import { useDecode } from "../../hooks/useDecode";
+import { apiGetClinicalInfoById } from "../../api/clinicalInfo/apiClinicalInfo";
+import { apiGetUserById } from "../../api/users/apiUsers";
 export default function WeeklyCalendar({
   eventsDB,
-  dateSelected,
   setModalModifyIsVisible,
   modalModifyIsVisible,
+  data,
+  forceCalendarUpdate,
+  setOpenDrawer,
+  //openDrawer,
+  dentistID,
+  currentDate,
+  setCurrentDate,
 }) {
   const [calendarApis, setCalendarApis] = useState(null);
   const [contentHeight, setContentHeight] = useState(600);
+  const [eventClickInfo, setEventClickInfo] = useState([]);
+  const [showModal, setShowModal] = useState(null);
+  const [infoEventSelected, setInfoEventSelected] = useState(null);
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth);
+  const [infoClinic, setInfoClinic] = useState(null);
 
-  const adjustContentHeight = () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    console.log("Tamaño pantalla", width, "ALTURA; ", height);
-    if (height < 600) {
-      setContentHeight(420); // Altura para pantallas pequeñas
-    } else if (height < 768) {
-      setContentHeight(550); // Altura para pantallas medianas
-    } else {
-      setContentHeight(600); // Altura para pantallas grandes
-    }
-  };
+  //uso el decode para traer el id del usuario
 
+  const token = localStorage.getItem("token");
+  const decode = useDecode(token);
+  const role = decode.role;
+
+  //traigo el usuario para conseguir la info de la clinica
   useEffect(() => {
-    // Ajusta la altura inicialmente
-    adjustContentHeight();
-
-    // Agrega un listener para el evento resize
-    window.addEventListener("resize", adjustContentHeight);
-
-    // Limpia el listener al desmontar el componente
-    return () => {
-      window.removeEventListener("resize", adjustContentHeight);
+    const fetchInfoClinic = async () => {
+      try {
+        //para obtener el id de la clinica
+        const resUser = await apiGetUserById(decode.user_id);
+        const res = await apiGetClinicalInfoById(resUser.data.clinic_id);
+        if (res && res.data) {
+          setInfoClinic(res.data); // Actualiza el estado con la información de la clínica
+        }
+      } catch (error) {
+        console.error("Error de la API:", error);
+      }
     };
-  }, []);
+    fetchInfoClinic();
+  }, [decode.user_id]);
 
-  //Dirije hacie la vista diaria segun la fecha seleccionada en el MiniCalendar
+  const calendarRef = useRef(null);
+  const currentDateRef = useRef(currentDate);
+
   useEffect(() => {
-    if (calendarApis && dateSelected) {
-      //calendarApis.gotoDate(dateSelected);
-      calendarApis.changeView("timeGridDay", dateSelected);
-    }
-  }, [calendarApis, dateSelected]);
+    currentDateRef.current = currentDate;
+  }, [currentDate]);
 
-  //Toma la referencia de la api del calendario cuando este listo
-  /* const handleDatesSet = (arg) => {
-    setTimeout(() => {
-      setCalendarApis(arg.view.calendar);
-    }, 0);
-  }; */
-
-  const handleDatesSet = useCallback((arg) => {
-    setCalendarApis(arg.view.calendar);
+  const adjustContentHeight = useCallback(() => {
+    setIsSmallScreen(window.innerWidth);
+    const height = window.innerHeight;
+    setContentHeight(height < 680 ? 500 : height < 768 ? 600 : 640);
   }, []);
 
-  //funcion para añadir eventos
-  function handleDateSelect(selectInfo) {
-    let title = prompt("Alerta");
-    let calendarApi = selectInfo.view.calendar;
+  useEffect(() => {
+    adjustContentHeight();
+    window.addEventListener("resize", adjustContentHeight);
+    return () => window.removeEventListener("resize", adjustContentHeight);
+  }, [adjustContentHeight]);
 
-    calendarApi.unselect(); // clear date selection
-
-    if (title) {
-      calendarApi.addEvent({
-        //id: nowStr,
-        title,
-        start: selectInfo.startStr,
-        end: selectInfo.endStr,
-        allDay: selectInfo.allDay,
-      });
+  useEffect(() => {
+    if (calendarApis && currentDate) {
+      calendarApis.changeView("timeGridDay", currentDate);
     }
-  }
+  }, [calendarApis, currentDate]);
 
-  function handleEventClick(clickInfo) {
-    setModalModifyIsVisible(true);
-    //console.log("evento clickeado", clickInfo.event);
-    /* if (
-      confirm(
-        `Are you sure you want to delete the event '${clickInfo.event.title}'`
-      )
+  const handleDatesSet = useCallback(
+    (arg) => {
+      setCalendarApis(arg.view.calendar);
+      const newDate = arg.view.currentStart;
+      if (newDate.getTime() !== currentDateRef.current.getTime()) {
+        setCurrentDate(newDate);
+      }
+    },
+    [setCurrentDate]
+  );
+
+  const handleDateSelect = useCallback((selectInfo) => {
+    const now = new Date();
+    const selectedStart = new Date(selectInfo.start);
+    const dayOfWeek = selectedStart.getDay();
+
+    if (
+      (isToday(selectedStart) || isFuture(selectedStart)) &&
+      dayOfWeek !== 0
     ) {
-      console.log("evento clickeado", clickInfo.event);
-      clickInfo.event.remove();
-    } */
-  }
+      if (isToday(selectedStart) && isBefore(selectedStart, now)) {
+        return;
+      }
+      setInfoEventSelected(selectInfo);
+      setShowModal(true);
+    }
+  }, []);
+
+  const handleEventClick = useCallback(
+    (clickInfo) => {
+      if (role === "dentist") return;
+      const now = new Date();
+      const selectedStart = new Date(clickInfo.event.start);
+      const dayOfWeek = selectedStart.getDay();
+
+      if (
+        (isToday(selectedStart) || isFuture(selectedStart)) &&
+        dayOfWeek !== 0
+      ) {
+        if (isToday(selectedStart) && isBefore(selectedStart, now)) {
+          return;
+        }
+        setEventClickInfo(clickInfo.event);
+        setModalModifyIsVisible(true);
+      }
+    },
+    [role, setModalModifyIsVisible]
+  );
+
+  const handleShowBurger = useCallback(() => {
+    setOpenDrawer((prev) => !prev);
+  }, [setOpenDrawer]);
+
+  const calendarOptions = useMemo(
+    () => ({
+      locale: esLocale,
+      plugins: [timeGridPlugin, interactionPlugin],
+      headerToolbar: {
+        left: `${isSmallScreen > 954 ? "prev,next today" : ""}`,
+        center: "title",
+        right: `${
+          isSmallScreen > 954 ? "timeGridWeek,timeGridDay" : "prev,next"
+        }`,
+      },
+      initialView: "timeGridDay",
+      selectable: role !== "dentist",
+      selectOverlap: false,
+      selectMirror: true,
+      selectConstraint: {
+        start: new Date(),
+        end: "2100-01-01",
+      },
+      dayMaxEvents: true,
+      weekends: true,
+      hiddenDays: [0],
+      events: eventsDB,
+      select: handleDateSelect,
+      eventClick: handleEventClick,
+      eventOverlap: false,
+      editable: false,
+      eventDurationEditable: false,
+      datesSet: handleDatesSet,
+      slotDuration: "00:30:00",
+      slotMinTime: infoClinic ? infoClinic.opening_hours + ":00" : "08:00:00",
+      slotMaxTime: infoClinic ? infoClinic.closing_hours + ":00" : "21:00:00",
+      allDaySlot: false,
+      contentHeight: contentHeight,
+      slotLabelFormat: {
+        hour: "numeric",
+        minute: "2-digit",
+        meridiem: false,
+      },
+    }),
+    [
+      isSmallScreen,
+      role,
+      eventsDB,
+      handleDateSelect,
+      handleEventClick,
+      handleDatesSet,
+      infoClinic,
+      contentHeight,
+    ]
+  );
 
   return (
     <>
-      <div className="demo-app">
+      <div className="relative p-2 pb-3 demo-app">
         <div className="demo-app-main">
           <FullCalendar
-            locale={esLocale}
-            plugins={[timeGridPlugin, interactionPlugin]}
-            headerToolbar={{
-              left: "prev,next today",
-              center: "title",
-              right: "timeGridWeek,timeGridDay",
-            }}
-            initialView="timeGridWeek"
-            editable={true}
-            selectable={true}
-            selectMirror={true}
-            dayMaxEvents={true}
-            weekends={false}
-            /* events */
-            events={eventsDB}
-            select={handleDateSelect}
+            ref={calendarRef}
+            {...calendarOptions}
             eventContent={(eventInfo) => (
-              <EventsContent eventInfo={eventInfo} />
-            )} // custom render function
-            eventClick={handleEventClick}
-            eventOverlap={false}
-            updateSize={true}
-            //eventsSet={handleEvents} // called after events are initialized/added/changed/removed
-            /* you can update a remote database when these fire:
-            eventAdd={function(){}}
-            eventChange={function(){}}
-            eventRemove={function(){}}          
-            */
-            /* eventContent={(eventInfo) => (
-              <EventContent
+              <EventsContent
                 eventInfo={eventInfo}
-                handleChangeState={handleChangeState}
-                handleOpenUpdateWindow={handleOpenUpdateWindow}
+                forceCalendarUpdate={forceCalendarUpdate}
+                data={data}
               />
-            )} */
-            //dateClick={handleDateClick}
-            datesSet={handleDatesSet}
-            //CONFIGURACION PARA LAS CELDAS
-            slotDuration="00:30:00"
-            slotMinTime="08:00:00"
-            slotMaxTime="21:00:00"
-            allDaySlot={false}
-            contentHeight={contentHeight}
-            /* height={500} */
-            slotLabelFormat={{
-              hour: "numeric",
-              minute: "2-digit",
-              meridiem: false,
-            }}
+            )}
           />
         </div>
+        <div
+          className={`absolute top-0 left-0 z-40 w-full h-full backdrop-blur-sm ${
+            eventsDB && "hidden"
+          }`}
+        ></div>
+      </div>
+      <div className="absolute left-2 top-2 lg:hidden">
+        <Button className="border-none" onClick={handleShowBurger}>
+          <IoMenu className="text-xl font-semibold" />
+        </Button>
       </div>
       {modalModifyIsVisible && (
         <EditShift
+          data={data}
+          eventInfo={eventClickInfo}
           isVisible={modalModifyIsVisible}
           setModalModifyIsVisible={setModalModifyIsVisible}
+          forceCalendarUpdate={forceCalendarUpdate}
+        />
+      )}
+      {showModal && (
+        <ScheduleShift
+          isVisible={showModal}
+          setModalShiftIsVisible={setShowModal}
+          data={data}
+          forceCalendarUpdate={forceCalendarUpdate}
+          dateSelected={infoEventSelected}
+          dentistID={dentistID}
         />
       )}
     </>
@@ -160,9 +236,14 @@ export default function WeeklyCalendar({
 }
 
 WeeklyCalendar.propTypes = {
-  /* setStateCalendarApi: PropTypes.func.isRequired, */
+  data: PropTypes.object.isRequired,
   modalModifyIsVisible: PropTypes.bool.isRequired,
   setModalModifyIsVisible: PropTypes.func.isRequired,
-  eventsDB: PropTypes.array.isRequired,
-  dateSelected: PropTypes.string.isRequired, // Cambiado a string
+  forceCalendarUpdate: PropTypes.func.isRequired,
+  setOpenDrawer: PropTypes.func.isRequired,
+  openDrawer: PropTypes.bool.isRequired,
+  eventsDB: PropTypes.array,
+  dentistID: PropTypes.number,
+  currentDate: PropTypes.instanceOf(Date).isRequired,
+  setCurrentDate: PropTypes.func.isRequired,
 };

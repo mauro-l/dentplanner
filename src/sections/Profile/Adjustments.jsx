@@ -1,55 +1,106 @@
-import CardWhite from "../../components/CardWhite"
-import DropTable from "../../components/DropTable"
+import CardWhite from "../../components/CardWhite";
+import DropTable from "../../components/DropTable";
 import ConfigProfile from "./ConfigProfile";
-import { useState } from "react";
 import { FaRegEdit } from "react-icons/fa";
-
-
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { apiGetClinicalInfoById } from "../../api/clinicalInfo/apiClinicalInfo";
+import { useDecode } from "../../hooks/useDecode";
+import { apiGetUserById } from "../../api/users/apiUsers";
 
 const Adjustments = () => {
-  //variables para ejemplos
-  const [userRole, setUserRole] = useState('admin'); // Puede ser 'admin' o 'dentist'
-  const [sections, setSections] = useState([
-    { nombre: 'Teléfono', value: '0800 222 4589' },
-    { nombre: 'Dirección', value: 'Dirección del lugar' },
-    { nombre: 'Correo electrónico', value: 'correo electrónico' },
-    { nombre: 'Horario de apertura', value: 'Horario de apertura del lugar' },
-    { nombre: 'Horario de cierre', value: 'Horario de cierre del lugar' }
-  ]);
- 
-  
- const section2= [{
-    nombre:"Motivos",
-    value: "Peronaliza los motivos" ,
-    icon: <FaRegEdit />,
-  }]
-//esto actualiza los campos
-  const handleSectionChange = (updatedSections) => {
-    setSections(updatedSections);
-  };
+  const token = localStorage.getItem("token");
+  const decode = useDecode(token);
+  const role = decode.role;
+
+  const [infoClinic, setInfoClinic] = useState(null);
+
+  // Mapeo de nombres de columnas a nombres legibles en español y el useMemo para evitar que se recalcule en cada render
+  const columnNames = useMemo(
+    () => ({
+      name: "Nombre",
+      phone_number: "Teléfono",
+      address: "Dirección",
+      email: "Correo",
+      opening_hours: "Apertura",
+      closing_hours: "Cierre",
+    }),
+    []
+  );
+
+  // usamos useCallback para evitar que se recalcule en cada render
+  const transformData = useCallback(
+    (clinic) => {
+      return Object.keys(clinic)
+        .filter((key) => key !== "id")
+        .map((key) => ({
+          nombre: columnNames[key] || key, // Usa el nombre legible si existe, sino usa la clave original
+          value: clinic[key],
+        }));
+    },
+    [columnNames]
+  );
+
+  useEffect(() => {
+    const fetchInfoClinic = async () => {
+      try {
+        //para obtener el id de la clinica
+        const resUser = await apiGetUserById(decode.user_id);
+        const res = await apiGetClinicalInfoById(resUser.data.clinic_id);
+        if (res && res.data) {
+          setInfoClinic(transformData(res.data)); // Actualiza el estado con la información de la clínica
+        }
+      } catch (error) {
+        console.error("Error de la API:", error);
+      }
+    };
+    fetchInfoClinic();
+  }, [decode.user_id, transformData]);
+
+  const section2 = [
+    {
+      nombre: "Motivos",
+      value: "Peronaliza los motivos",
+      icon: <FaRegEdit />,
+    },
+  ];
+
   return (
     <>
-    <div className="bg-white xl:mx-72 md:mx-48 sm:mx-4 mt-4 mb-4 px-2 gap-[24px]">
-
-      <CardWhite className="!gap-4 px-[24px] py-[34px]">
-        <h1 className="text-[24px] font-bold pb-[10px] " >Ajustes generales</h1>
-        <div className="border rounded-md">
-        <DropTable nameButton={"Información de la clínica"} userRole={userRole} sections={sections}/>
+      {!infoClinic ? (
+        <div className="flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-bold">Cargando...</h2>
+          </div>
         </div>
-         
-      <div className="border rounded-md">
-        <DropTable nameButton={"Consultas"} userRole={userRole} sections={section2}/>
+      ) : (
+        <div className="bg-white max-w-[746px] w-full gap-6 px-[16px]">
+          <CardWhite className="!gap-4 py-[24px] px-6 sm:py-[34px]">
+            <h1 className="text-[24px] sm:text-[24px] font-medium text-[#192739]">
+              Ajustes generales
+            </h1>
+            <div className="border rounded-md">
+              <DropTable
+                nameButton={"Información de la clínica"}
+                sections={infoClinic}
+              />
+            </div>
+            {(role === "admin" || role === "secretary") && (
+              <div className="border rounded-md">
+                <DropTable
+                  nameButton={"Consultas"}
+                  sections={section2}
+                  redirect={"/perfil/motivos"}
+                />
+              </div>
+            )}
+            <div className="border rounded-md">
+              <ConfigProfile nameButton={"Consultas"} sections={section2} />
+            </div>
+          </CardWhite>
         </div>
+      )}
+    </>
+  );
+};
 
-        <div className="border rounded-md">
-        <ConfigProfile nameButton={"Consultas"} userRole={userRole} sections={section2}/>
-        </div>
-        </CardWhite>
-      </div>
-      
-      
-      </>
-  )
-}
-
-export default Adjustments
+export default Adjustments;

@@ -9,8 +9,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import registerSchema from '../../validations/register';
 import { apiRegister } from '../../api/apiRegister';
+import { Toaster, toast } from "react-hot-toast";
 
 const RegisterUser = () => {
+ 
   const navigate = useNavigate();
   //esquema de zod para las validaciones
   const { register, handleSubmit, formState: { errors } } = useForm({
@@ -22,20 +24,22 @@ const RegisterUser = () => {
     try {
       const response = await apiRegister(data); // Enviamos el objeto data directamente
       
-     
-     navigate('/inicio');
-    } catch (error) {
-      if (error.response) {
-        // El servidor respondió con un estado diferente a 2xx
-        console.error('Register failed with response:', error.response.data);
-      } else if (error.request) {
-        // La solicitud fue hecha pero no hubo respuesta
-        console.error('Register failed with request:', error.request);
-       
-      } else {
-        // Ocurrió un error al configurar la solicitud
-        console.error('Register failed with message:', error.message);
+      if (response.status === 200) {
+        toast.success("El usuario se creo con éxito");
+        setTimeout(() => {
+          window.location.href = "/usuarios";
+        }, 500);
       }
+
+    } catch (error) {
+     
+        console.log(error.response);
+        
+        // El servidor respondió con un estado diferente a 2xx
+        
+        toast.error("No se pudo crear el usuario, DNI o email duplicados")
+      
+    console.error('Register failed with response:', error);
     }
   };
   //con esto paso los roles al campo con opciones
@@ -45,7 +49,7 @@ const RegisterUser = () => {
   ];
   //funcion para el boton cancelar 
   const handleCancel =()=>{
-    navigate('/inicio');
+    navigate('/usuarios');
   }
   return (
     <>
@@ -60,8 +64,8 @@ const RegisterUser = () => {
           <div className="sm:w-full">
             <form className="flex flex-col gap-[24px]" onSubmit={handleSubmit(onSubmit)}>
               {/* Inputs de nombre y apellido */}
-              <div className='flex gap-4'>
-                <div className="w-1/2">
+              <div className='flex flex-col sm:flex-row gap-4'>
+                <div className="w-full sm:w-1/2">
 
                   <label
                     htmlFor="name"
@@ -75,7 +79,7 @@ const RegisterUser = () => {
                     {errors.name && <p className="text-error">{errors.name.message}</p>}
                   </div>
                 </div>
-                <div className="w-1/2">
+                <div className="w-full sm:w-1/2">
                   <label
                     htmlFor="lastName"
 
@@ -90,23 +94,37 @@ const RegisterUser = () => {
                   </div>
                 </div>
               </div>
-              {/* Input del DNI */}
-              <div >
-                <div className="flex items-center justify-between">
+               {/* Input de los telefono y DNI */}
+               <div className=' flex flex-col sm:flex-row gap-4'>
+                <div className="w-full sm:w-1/2">
                   <label
+                    htmlFor="phone1"
+
+                    className="block text-sm font-medium mx-2 leading-6 text-gray-900 "
+                  >
+                    Telefono *
+                  </label>
+                  <div className="mt-2">
+                    <Input placeholder="Ingrese su número" type="text" className="block w-full"  {...register("phone1")} />
+                    {errors.phone1 && <p className="text-error">{errors.phone1.message}</p>}
+                  </div>
+                </div>
+                <div className="w-full sm:w-1/2">
+                <label
                     htmlFor="dni"
 
                     className="block text-sm font-medium mx-2 leading-6 text-gray-900 "
                   >
                     DNI *
                   </label>
-                </div>
-                <div >
+                  <div className="mt-2" >
                   <Input placeholder="Ingrese su Dni" type="text" className="block w-full"  {...register("dni")} />
                   {errors.dni && <p className="text-error">{errors.dni.message}</p>}
                 </div>
-
+               
+                </div>
               </div>
+
 
               {/* Input del email */}
               <div>
@@ -141,36 +159,8 @@ const RegisterUser = () => {
                   {errors.password && <p className="text-error">{errors.password.message}</p>}
                 </div>
               </div>
-              {/* Input de los telefonos */}
-              <div className='flex gap-4'>
-                <div className="w-1/2">
-                  <label
-                    htmlFor="phone1"
 
-                    className="block text-sm font-medium mx-2 leading-6 text-gray-900 "
-                  >
-                    Telefono 1 *
-                  </label>
-                  <div className="mt-2">
-                    <Input placeholder="Ingrese su número" type="text" className="block w-full"  {...register("phone1")} />
-                    {errors.phone1 && <p className="text-error">{errors.phone1.message}</p>}
-                  </div>
-                </div>
-                <div className="w-1/2">
-                  <label
-                    htmlFor="phone2"
-
-                    className="block text-sm font-medium mx-2 leading-6 text-gray-900 "
-                  >
-                    Telefono 2
-                  </label>
-                  <div className="mt-2">
-                    <Input placeholder="Ingrese su número" type="text" className="block w-full" {...register("phone2")} />
-                    {errors.phone2 && <p className="text-error">{errors.phone2.message}</p>}
-                  </div>
-                </div>
-              </div>
-
+             
 
               {/* Input del Rol */}
               <div>
@@ -212,7 +202,7 @@ const RegisterUser = () => {
           </div>
           </CardWhite>
         </div>
-      
+        <Toaster position="top-right" />
     </>
   )
 }
